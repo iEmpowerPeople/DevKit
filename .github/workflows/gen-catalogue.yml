@@ -1,6 +1,7 @@
 name: Update README and Profiles
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'library/**'

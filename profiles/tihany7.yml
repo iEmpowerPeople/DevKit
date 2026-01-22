@@ -40,6 +40,18 @@ commands:
     author: shared
     enabled: false
 
+  - id: file-editing
+    author: xapids
+    enabled: false
+
+  - id: gitgh-us-merge
+    author: xapids
+    enabled: false
+
+  - id: incise
+    author: xapids
+    enabled: false
+
   - id: xapids-example-command
     author: xapids
     enabled: false

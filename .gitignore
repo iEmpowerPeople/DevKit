@@ -1,0 +1,13 @@
+# Personal sync preferences - don't commit these
+.sync-state-*.json
+
+# Personal profiles (optional - users can commit their profiles if they want to share)
+# profiles/*.yml
+# profiles/*.yaml
+# profiles/*.txt
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp

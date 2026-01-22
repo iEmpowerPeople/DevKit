@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""Profile-driven sync adapter for Claude Code + OpenCode.
+
+Design rules (enforced):
+- Sync only profile-enabled tools.
+- Never overwrite/delete anything the adapter does not own.
+- Prune (delete) only when: profile says enabled:false AND adapter owns the destination path.
+- Skills are directories: copy entire folder.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import getpass
+import json
+import shutil
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Iterable, Literal, Optional, Tuple, cast
+
+Category = Literal["agents", "commands", "skills"]
+Target = Literal["claude", "opencode"]
+
+
+@dataclass(frozen=True)
+class Entry:
+    category: Category
+    id: str
+    author: str
+    enabled: bool
+
+
+def abort(msg: str, exit_code: int = 1) -> None:
+    print(msg, file=sys.stderr)
+    raise SystemExit(exit_code)
+
+
+def prompt_and_abort(title: str, body: str, exit_code: int = 1) -> None:
+    print(title, file=sys.stderr)
+    print(body.rstrip() + "\n", file=sys.stderr)
+    try:
+        input("Press Enter to abort...")
+    except (EOFError, KeyboardInterrupt):
+        pass
+    raise SystemExit(exit_code)
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def default_state_file() -> Path:
+    # Keep it in repo (gitignored) so it travels with the repo clone.
+    return repo_root() / f".sync-state-{getpass.getuser()}.json"
+
+
+def load_yaml(path: Path) -> Dict[str, Any]:
+    try:
+        import yaml as pyyaml  # type: ignore
+    except Exception:
+        pyyaml = None
+    if pyyaml is None:
+        prompt_and_abort(
+            "Missing dependency: PyYAML",
+            "This script requires PyYAML. Install it (example):\n"
+            "  python3 -m pip install pyyaml\n",
+        )
+    assert pyyaml is not None
+    data: Any = None
+    try:
+        data = pyyaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        prompt_and_abort("Failed to read profile", f"Profile: {path}\nError: {e}")
+    if not isinstance(data, dict):
+        prompt_and_abort("Invalid profile format", f"Expected YAML mapping at top-level: {path}")
+    return cast(Dict[str, Any], data)
+
+
+def load_state(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {
+            "version": 1,
+            "owned": {"claude": {"agents": {}, "commands": {}, "skills": {}}, "opencode": {"agents": {}, "commands": {}, "skills": {}}},
+        }
+    data: Any = None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        prompt_and_abort("Failed to read state file", f"State: {path}\nError: {e}")
+    if not isinstance(data, dict):
+        prompt_and_abort("Invalid state file", f"Expected JSON object: {path}")
+    data_dict = cast(Dict[str, Any], data)
+    data_dict.setdefault("version", 1)
+    data_dict.setdefault("owned", {})
+    for t in ("claude", "opencode"):
+        data_dict["owned"].setdefault(t, {})
+        for c in ("agents", "commands", "skills"):
+            data_dict["owned"][t].setdefault(c, {})
+    return data_dict
+
+
+def save_state(path: Path, state: Dict[str, Any]) -> None:
+    state["updatedAt"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def parse_entries(profile: Dict[str, Any]) -> list[Entry]:
+    out: list[Entry] = []
+    for category in ("agents", "commands", "skills"):
+        items = profile.get(category, [])
+        if items is None:
+            items = []
+        if not isinstance(items, list):
+            prompt_and_abort("Invalid profile", f"Expected list for '{category}'")
+        for item in items:
+            if not isinstance(item, dict):
+                prompt_and_abort("Invalid profile", f"Expected mapping items under '{category}'")
+            tool_id = item.get("id")
+            author = item.get("author")
+            enabled = item.get("enabled")
+            if not isinstance(tool_id, str) or not tool_id:
+                prompt_and_abort("Invalid profile", f"Missing/invalid id under '{category}'")
+            if not isinstance(author, str) or not author:
+                prompt_and_abort("Invalid profile", f"Missing/invalid author for {category}:{tool_id}")
+            if not isinstance(enabled, bool):
+                prompt_and_abort("Invalid profile", f"Missing/invalid enabled for {category}:{tool_id}")
+            tool_id_str = cast(str, tool_id)
+            author_str = cast(str, author)
+            enabled_bool = cast(bool, enabled)
+            out.append(Entry(category=cast(Category, category), id=tool_id_str, author=author_str, enabled=enabled_bool))
+    return out
+
+
+def detect_duplicates(entries: Iterable[Entry]) -> Optional[Tuple[Category, str, list[Entry]]]:
+    by_key: Dict[Tuple[Category, str], list[Entry]] = {}
+    for e in entries:
+        by_key.setdefault((e.category, e.id), []).append(e)
+    for (category, tool_id), group in by_key.items():
+        if len(group) > 1:
+            return category, tool_id, group
+    return None
+
+
+def src_path(e: Entry, root: Path) -> Path:
+    base = root / "library" / e.author / e.category
+    if e.category == "skills":
+        return base / e.id
+    return base / f"{e.id}.md"
+
+
+def claude_dest(e: Entry, claude_root: Path) -> Path:
+    if e.category == "skills":
+        return claude_root / "skills" / e.id
+    return claude_root / e.category / f"{e.id}.md"
+
+
+def opencode_dest(e: Entry, opencode_root: Path) -> Path:
+    if e.category == "skills":
+        return opencode_root / "skills" / e.id
+    return opencode_root / e.category / f"{e.id}.md"
+
+
+def is_owned(state: Dict[str, Any], target: Target, e: Entry, dest: Path) -> bool:
+    owned_map = state.get("owned", {}).get(target, {}).get(e.category, {})
+    if not isinstance(owned_map, dict):
+        return False
+    recorded = owned_map.get(e.id)
+    if not isinstance(recorded, str):
+        return False
+    return Path(recorded) == dest
+
+
+def set_owned(state: Dict[str, Any], target: Target, e: Entry, dest: Path) -> None:
+    state["owned"][target][e.category][e.id] = str(dest)
+
+
+def clear_owned(state: Dict[str, Any], target: Target, e: Entry) -> None:
+    state["owned"][target][e.category].pop(e.id, None)
+
+
+def ensure_parent(dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+
+def copy_file(src: Path, dest: Path) -> None:
+    ensure_parent(dest)
+    shutil.copy2(src, dest)
+
+
+def copy_skill_dir(src_dir: Path, dest_dir: Path) -> None:
+    ensure_parent(dest_dir)
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    shutil.copytree(src_dir, dest_dir)
+
+
+def delete_path(path: Path) -> None:
+    if not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Sync DevKit profile to Claude Code and OpenCode")
+    parser.add_argument("profile", help="Profile name (e.g. xapids)")
+    parser.add_argument(
+        "--target",
+        choices=["both", "claude", "opencode"],
+        default="both",
+        help="Where to sync (default: both)",
+    )
+    parser.add_argument(
+        "--no-prune",
+        action="store_true",
+        help="Disable pruning of adapter-owned disabled entries",
+    )
+    parser.add_argument(
+        "--state-file",
+        default=None,
+        help="Override state file path (default: .sync-state-<user>.json in repo root)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print actions without changing filesystem",
+    )
+    parser.add_argument(
+        "--claude-root",
+        default=str(Path.home() / ".claude"),
+        help="Claude config root (default: ~/.claude)",
+    )
+    parser.add_argument(
+        "--opencode-root",
+        default=str(Path.home() / ".config" / "opencode"),
+        help="OpenCode config root (default: ~/.config/opencode)",
+    )
+    args = parser.parse_args(argv)
+
+    profile_path = repo_root() / "profiles" / f"{args.profile}.yml"
+    if not profile_path.exists():
+        prompt_and_abort("Profile not found", f"Expected: {profile_path}")
+
+    state_path = Path(args.state_file).expanduser() if args.state_file else default_state_file()
+    state = load_state(state_path)
+
+    profile = load_yaml(profile_path)
+    entries = parse_entries(profile)
+
+    dup = detect_duplicates(entries)
+    if dup is not None:
+        category, tool_id, group = dup
+        authors = ", ".join(sorted({e.author for e in group}))
+        prompt_and_abort(
+            "Duplicate id in profile",
+            f"Category: {category}\nId: {tool_id}\nAuthors: {authors}\n\n"
+            "Fix: change ids in the repo/profile to be unique, then re-run.",
+        )
+
+    root = repo_root()
+    claude_root = Path(args.claude_root).expanduser()
+    opencode_root = Path(args.opencode_root).expanduser()
+    targets: list[Target]
+    if args.target == "both":
+        targets = ["claude", "opencode"]
+    else:
+        targets = [args.target]  # type: ignore[assignment]
+
+    enabled = [e for e in entries if e.enabled]
+    disabled = [e for e in entries if not e.enabled]
+
+    # Preflight: sources exist; writes do not conflict with non-owned destinations.
+    planned_writes: list[Tuple[Target, Entry, Path, Path]] = []
+    planned_deletes: list[Tuple[Target, Entry, Path]] = []
+
+    for e in enabled:
+        src = src_path(e, root)
+        if e.category == "skills":
+            if not src.exists() or not src.is_dir():
+                prompt_and_abort(
+                    "Missing skill source directory",
+                    f"Expected directory: {src}\nFrom: {e.category}:{e.id} (author {e.author})",
+                )
+        else:
+            if not src.exists() or not src.is_file():
+                prompt_and_abort(
+                    "Missing source file",
+                    f"Expected file: {src}\nFrom: {e.category}:{e.id} (author {e.author})",
+                )
+
+        for t in targets:
+            dest = claude_dest(e, claude_root) if t == "claude" else opencode_dest(e, opencode_root)
+            if dest.exists() and not is_owned(state, t, e, dest):
+                prompt_and_abort(
+                    "Destination conflict (not adapter-owned)",
+                    f"Tool: {e.category}:{e.id} (author {e.author})\n"
+                    f"Source: {src}\nDestination: {dest}\n\n"
+                    "The destination exists but was not created by this adapter, so it will not be overwritten.\n"
+                    "Resolution: rename/move/delete the existing destination path OR change this tool's id to avoid collision.\n"
+                    "Then re-run sync.",
+                )
+            planned_writes.append((t, e, src, dest))
+
+    if not args.no_prune:
+        for e in disabled:
+            for t in targets:
+                dest = claude_dest(e, claude_root) if t == "claude" else opencode_dest(e, opencode_root)
+                if is_owned(state, t, e, dest):
+                    planned_deletes.append((t, e, dest))
+
+    # Execute
+    def say(line: str) -> None:
+        print(line)
+
+    if args.dry_run:
+        say("DRY RUN: no filesystem changes")
+
+    for t, e, src, dest in planned_writes:
+        owned = is_owned(state, t, e, dest)
+        action = "update" if owned and dest.exists() else "install"
+        say(f"{t}: {action} {e.category}:{e.id} -> {dest}")
+        if args.dry_run:
+            continue
+        if e.category == "skills":
+            copy_skill_dir(src, dest)
+        else:
+            copy_file(src, dest)
+        set_owned(state, t, e, dest)
+
+    for t, e, dest in planned_deletes:
+        say(f"{t}: prune {e.category}:{e.id} -> {dest}")
+        if args.dry_run:
+            continue
+        delete_path(dest)
+        clear_owned(state, t, e)
+
+    if not args.dry_run:
+        save_state(state_path, state)
+        say(f"State updated: {state_path}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

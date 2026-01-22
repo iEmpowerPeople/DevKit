@@ -1,0 +1,84 @@
+# xapids's DevKit-Claude Profile
+# Personal tool selections from the library
+# Browse README.md to see all available tools
+# Set enabled: true to sync a tool, enabled: false to skip it
+# author: indicates who maintains the tool (shared, xapids, tihany7)
+
+# Agents
+agents:
+  - id: shared-example-agent
+    author: shared
+    enabled: false
+
+  - id: xapids-example-agent
+    author: xapids
+    enabled: false
+
+  - id: tihany7-example-agent
+    author: tihany7
+    enabled: false
+
+
+# Skills
+skills:
+  - id: shared-example-skill
+    author: shared
+    enabled: false
+
+  - id: xapids-example-skill
+    author: xapids
+    enabled: false
+
+  - id: tihany7-example-skill
+    author: tihany7
+    enabled: false
+
+
+# Commands
+commands:
+  - id: shared-example-command
+    author: shared
+    enabled: false
+
+  - id: xapids-example-command
+    author: xapids
+    enabled: false
+
+  - id: tihany7-example-command
+    author: tihany7
+    enabled: false
+
+
+# Mcp
+mcp:
+  - id: context7
+    author: shared
+    enabled: false
+
+  - id: perplexity
+    author: shared
+    enabled: false
+
+  - id: shared-example-mcp
+    author: shared
+    enabled: false
+
+
+# Cli
+cli:
+  - id: claude-code-cli
+    author: shared
+    enabled: false
+
+  - id: git-cli
+    author: shared
+    enabled: false
+
+  - id: github-cli
+    author: shared
+    enabled: false
+
+  - id: opencode-cli
+    author: shared
+    enabled: false
+

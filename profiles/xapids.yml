@@ -1,5 +1,6 @@
 # xapids's DevKit Profile
 # Personal tool selections from the library
+# Browse README.md to see all available tools
 # Set enabled: true to sync a tool, enabled: false to skip it
 # author: indicates who maintains the tool (shared, xapids, tihany7)
 
@@ -81,10 +82,6 @@ extras:
     author: shared
     enabled: false
 
-  - id: codelayer-gui
-    author: shared
-    enabled: false
-
   - id: git-cli
     author: shared
     enabled: false
@@ -94,6 +91,11 @@ extras:
     enabled: false
 
   - id: opencode-cli
+    author: shared
+    enabled: false
+
+
+  - id: codelayer-gui
     author: shared
     enabled: false
 

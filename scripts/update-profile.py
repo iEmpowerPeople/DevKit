@@ -132,9 +132,25 @@ def write_profile(profile_path, profile_name, library_tools, existing_enabled):
         
         tools = library_tools.get(category, [])
         if tools:
+            prev_extras_group = None
+
+            def _extras_group(tool_id: str) -> str:
+                if tool_id.endswith('-cli'):
+                    return 'cli'
+                if tool_id.endswith('-gui'):
+                    return 'gui'
+                return 'other'
+
             for tool in tools:
                 tool_id = tool['id']
                 author = tool['author']
+
+                # For extras, add an extra blank line between groups (-cli, -gui, other)
+                if category == 'extras':
+                    group = _extras_group(tool_id)
+                    if prev_extras_group is not None and group != prev_extras_group:
+                        lines.append("")
+                    prev_extras_group = group
                 
                 # Preserve existing enabled state or default to false
                 enabled = existing_enabled.get(category, {}).get(tool_id, False)

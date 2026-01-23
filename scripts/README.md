@@ -26,6 +26,10 @@ Arguments:
   - `--dry-run`: print plan; write nothing; do not update state.
   - `--no-prune`: install/update only; skip default pruning.
 
+Enabled extras output:
+- Prints install status for each enabled extra with `ok`, `missing`, or `outdated`.
+- GUI extras are detected with OS-specific checks (app bundles, cask installs, or known paths).
+
 Mental Model:
 - SSOT: `library/<author>/{agents,commands}/<id>.md`, `library/<author>/skills/<id>/...` (copy full skill dir).
 - Targets:
@@ -80,6 +84,7 @@ Architecture:
 - Authors: scan `library/{shared,xapids,tihany7}/...` only.
 - Skills: discover `skills/<id>/SKILL.md`; id is folder name.
 - Ignore: dotfiles, `_private` docs, `.gitkeep`.
+- Output lists use HTML `<ul>`/`<li>` to keep spacing tight in previews; extras may be split into multiple lists by type.
 
 ## Check Tools
 

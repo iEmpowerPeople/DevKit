@@ -90,28 +90,36 @@ for category in "${CATEGORIES[@]}"; do
             other=$(echo "$tools" | awk -F'|' '$1 !~ /-cli$/ && $1 !~ /-gui$/ {print}')
 
             if [[ -n "$clis" ]]; then
+                echo "<ul>" >> "$TEMP_FILE"
                 while IFS='|' read -r tool_id author filepath; do
-                    echo "- **${tool_id}** - author: ${author}" >> "$TEMP_FILE"
+                    echo "  <li><strong>${tool_id}</strong> - author: ${author}</li>" >> "$TEMP_FILE"
                 done <<< "$clis"
+                echo "</ul>" >> "$TEMP_FILE"
             fi
 
             if [[ -n "$guis" ]]; then
                 [[ -n "$clis" ]] && echo "" >> "$TEMP_FILE"
+                echo "<ul>" >> "$TEMP_FILE"
                 while IFS='|' read -r tool_id author filepath; do
-                    echo "- **${tool_id}** - author: ${author}" >> "$TEMP_FILE"
+                    echo "  <li><strong>${tool_id}</strong> - author: ${author}</li>" >> "$TEMP_FILE"
                 done <<< "$guis"
+                echo "</ul>" >> "$TEMP_FILE"
             fi
 
             if [[ -n "$other" ]]; then
                 [[ -n "$clis" || -n "$guis" ]] && echo "" >> "$TEMP_FILE"
+                echo "<ul>" >> "$TEMP_FILE"
                 while IFS='|' read -r tool_id author filepath; do
-                    echo "- **${tool_id}** - author: ${author}" >> "$TEMP_FILE"
+                    echo "  <li><strong>${tool_id}</strong> - author: ${author}</li>" >> "$TEMP_FILE"
                 done <<< "$other"
+                echo "</ul>" >> "$TEMP_FILE"
             fi
         else
+            echo "<ul>" >> "$TEMP_FILE"
             while IFS='|' read -r tool_id author filepath; do
-                echo "- **${tool_id}** - author: ${author}" >> "$TEMP_FILE"
+                echo "  <li><strong>${tool_id}</strong> - author: ${author}</li>" >> "$TEMP_FILE"
             done <<< "$tools"
+            echo "</ul>" >> "$TEMP_FILE"
         fi
     else
         echo "*No items yet*" >> "$TEMP_FILE"

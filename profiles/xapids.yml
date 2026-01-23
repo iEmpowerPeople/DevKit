@@ -42,15 +42,15 @@ commands:
 
   - id: file-editing
     author: xapids
-    enabled: false
+    enabled: true
 
   - id: gitgh-us-merge
     author: xapids
-    enabled: false
+    enabled: true
 
   - id: incise
     author: xapids
-    enabled: false
+    enabled: true
 
   - id: xapids-example-command
     author: xapids
@@ -65,11 +65,11 @@ commands:
 mcp:
   - id: context7
     author: shared
-    enabled: false
+    enabled: true
 
   - id: perplexity
     author: shared
-    enabled: false
+    enabled: true
 
   - id: shared-example-mcp
     author: shared
@@ -80,30 +80,30 @@ mcp:
 extras:
   - id: claude-code-cli
     author: shared
-    enabled: false
+    enabled: true
 
   - id: git-cli
     author: shared
-    enabled: false
+    enabled: true
 
   - id: github-cli
     author: shared
-    enabled: false
+    enabled: true
 
   - id: opencode-cli
     author: shared
-    enabled: false
+    enabled: true
 
 
   - id: codelayer-gui
     author: shared
-    enabled: false
+    enabled: true
 
   - id: opencode-gui
     author: shared
-    enabled: false
+    enabled: true
 
   - id: vscode-gui
     author: shared
-    enabled: false
+    enabled: true
 

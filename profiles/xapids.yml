@@ -102,3 +102,8 @@ extras:
   - id: opencode-gui
     author: shared
     enabled: false
+
+  - id: vscode-gui
+    author: shared
+    enabled: false
+

@@ -140,6 +140,7 @@ Auto-generated list of all tools in the library. Your profile is automatically u
 
 - **codelayer-gui** - author: shared
 - **opencode-gui** - author: shared
+- **vscode-gui** - author: shared
 
 
 ---

@@ -102,45 +102,57 @@ Auto-generated list of all tools in the library. Your profile is automatically u
 
 ### Agents
 
-- **shared-example-agent** - author: shared
-- **tihany7-example-agent** - author: tihany7
-- **xapids-example-agent** - author: xapids
+<ul>
+  <li><strong>shared-example-agent</strong> - author: shared</li>
+  <li><strong>tihany7-example-agent</strong> - author: tihany7</li>
+  <li><strong>xapids-example-agent</strong> - author: xapids</li>
+</ul>
 
 
 ### Skills
 
-- **shared-example-skill** - author: shared
-- **tihany7-example-skill** - author: tihany7
-- **xapids-example-skill** - author: xapids
+<ul>
+  <li><strong>shared-example-skill</strong> - author: shared</li>
+  <li><strong>tihany7-example-skill</strong> - author: tihany7</li>
+  <li><strong>xapids-example-skill</strong> - author: xapids</li>
+</ul>
 
 
 ### Commands
 
-- **file-editing** - author: xapids
-- **gitgh-us-merge** - author: xapids
-- **incise** - author: xapids
-- **shared-example-command** - author: shared
-- **tihany7-example-command** - author: tihany7
-- **xapids-example-command** - author: xapids
+<ul>
+  <li><strong>file-editing</strong> - author: xapids</li>
+  <li><strong>gitgh-us-merge</strong> - author: xapids</li>
+  <li><strong>incise</strong> - author: xapids</li>
+  <li><strong>shared-example-command</strong> - author: shared</li>
+  <li><strong>tihany7-example-command</strong> - author: tihany7</li>
+  <li><strong>xapids-example-command</strong> - author: xapids</li>
+</ul>
 
 
-### Mcp
+### MCP
 
-- **context7** - author: shared
-- **perplexity** - author: shared
-- **shared-example-mcp** - author: shared
+<ul>
+  <li><strong>context7</strong> - author: shared</li>
+  <li><strong>perplexity</strong> - author: shared</li>
+  <li><strong>shared-example-mcp</strong> - author: shared</li>
+</ul>
 
 
 ### Extras
 
-- **claude-code-cli** - author: shared
-- **git-cli** - author: shared
-- **github-cli** - author: shared
-- **opencode-cli** - author: shared
+<ul>
+  <li><strong>claude-code-cli</strong> - author: shared</li>
+  <li><strong>git-cli</strong> - author: shared</li>
+  <li><strong>github-cli</strong> - author: shared</li>
+  <li><strong>opencode-cli</strong> - author: shared</li>
+</ul>
 
-- **codelayer-gui** - author: shared
-- **opencode-gui** - author: shared
-- **vscode-gui** - author: shared
+<ul>
+  <li><strong>codelayer-gui</strong> - author: shared</li>
+  <li><strong>opencode-gui</strong> - author: shared</li>
+  <li><strong>vscode-gui</strong> - author: shared</li>
+</ul>
 
 
 ---

@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Literal, Optional, Tuple, cast
 import platform
 import re
+import os
 
 Category = Literal["agents", "commands", "skills"]
 Target = Literal["claude", "opencode"]
@@ -179,6 +180,40 @@ def _cmd_output(argv: list[str]) -> str:
     return (p.stdout or "").strip()
 
 
+def _cmd_exit_code(argv: list[str]) -> int:
+    import subprocess
+
+    p = subprocess.run(argv, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return p.returncode
+
+
+def _brew_has_cask(name: str) -> bool:
+    if _which("brew") is None:
+        return False
+    return _cmd_exit_code(["brew", "list", "--cask", name]) == 0
+
+
+def _macos_app_exists(app_name: str) -> bool:
+    candidates = [
+        Path("/Applications") / f"{app_name}.app",
+        Path.home() / "Applications" / f"{app_name}.app",
+    ]
+    return any(path.exists() for path in candidates)
+
+
+def _windows_app_exists(rel_paths: list[str]) -> bool:
+    roots = []
+    for env_var in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA"):
+        value = os.environ.get(env_var)
+        if value:
+            roots.append(Path(value))
+    for root in roots:
+        for rel_path in rel_paths:
+            if (root / rel_path).exists():
+                return True
+    return False
+
+
 def extras_install_hints(extra_ids: list[str]) -> list[str]:
     # Prints actions; does not install.
     sysname = platform.system()
@@ -301,21 +336,52 @@ def extras_install_hints(extra_ids: list[str]) -> list[str]:
                 add_block("opencode-cli", ["ok"])
 
         elif tool_id == "opencode-gui":
-            # Cross-platform detection is unreliable; only report install location.
-            if sysname == "Darwin" and have_brew:
-                add_block("opencode-gui", ["manual", "1) brew install --cask opencode (if published)", "2) https://opencode.ai/"])
+            installed = False
+            if sysname == "Darwin":
+                installed = _macos_app_exists("OpenCode") or (have_brew and _brew_has_cask("opencode"))
+            if installed:
+                add_block("opencode-gui", ["ok"])
+            elif sysname == "Darwin" and have_brew:
+                add_block("opencode-gui", ["missing", "1) brew install --cask opencode (if published)", "2) https://opencode.ai/"])
             elif sysname == "Linux":
-                add_block("opencode-gui", ["manual"])
+                add_block("opencode-gui", ["missing", "1) https://opencode.ai/"])
             else:
-                add_block("opencode-gui", ["manual", "https://opencode.ai/"])
+                add_block("opencode-gui", ["missing", "1) https://opencode.ai/"])
 
         elif tool_id == "codelayer-gui":
-            if sysname == "Darwin" and have_brew:
-                add_block("codelayer-gui", ["manual", "1) brew install --cask codelayer (if published)", "2) provider instructions"])
+            installed = False
+            if sysname == "Darwin":
+                installed = _macos_app_exists("CodeLayer") or (have_brew and _brew_has_cask("codelayer"))
+            if installed:
+                add_block("codelayer-gui", ["ok"])
+            elif sysname == "Darwin" and have_brew:
+                add_block("codelayer-gui", ["missing", "1) brew install --cask codelayer (if published)", "2) provider instructions"])
             elif sysname == "Linux":
-                add_block("codelayer-gui", ["manual"])
+                add_block("codelayer-gui", ["missing", "1) provider instructions"])
             else:
-                add_block("codelayer-gui", ["manual", "provider instructions"])
+                add_block("codelayer-gui", ["missing", "1) provider instructions"])
+
+        elif tool_id == "vscode-gui":
+            installed = False
+            if _which("code"):
+                installed = True
+            elif sysname == "Darwin":
+                installed = _macos_app_exists("Visual Studio Code") or (have_brew and _brew_has_cask("visual-studio-code"))
+            elif sysname == "Windows":
+                installed = _windows_app_exists([
+                    "Microsoft VS Code/Code.exe",
+                    "Programs/Microsoft VS Code/Code.exe",
+                ])
+            if installed:
+                add_block("vscode-gui", ["ok"])
+            elif sysname == "Darwin" and have_brew:
+                add_block("vscode-gui", ["missing", "1) brew install --cask visual-studio-code", "2) https://code.visualstudio.com/"])
+            elif sysname == "Windows":
+                add_block("vscode-gui", ["missing", "1) winget install -e --id Microsoft.VisualStudioCode", "2) https://code.visualstudio.com/"])
+            elif sysname == "Linux":
+                add_block("vscode-gui", ["missing", "1) https://code.visualstudio.com/"])
+            else:
+                add_block("vscode-gui", ["missing", "1) https://code.visualstudio.com/"])
 
         else:
             add_block(tool_id, ["unknown", "1) see library/shared/extras/"])

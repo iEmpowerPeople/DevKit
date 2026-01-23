@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Checks for common CLIs used with this repo.
-# This script does not install anything; it only prints guidance.
+# Checks required and optional tools for this repo.
+# Pure diagnostics: prints guidance; installs nothing.
 
 STRICT=0
 if [[ "${1:-}" == "--strict" ]]; then
@@ -11,9 +11,27 @@ fi
 
 OS="$(uname -s)"
 
+case "$OS" in
+  MINGW*|MSYS*|CYGWIN*)
+    echo "Windows detected (Git Bash/MSYS/Cygwin)."
+    echo "Use PowerShell instead: powershell -ExecutionPolicy Bypass -File .\\scripts\\check-tools.ps1"
+    exit 0
+    ;;
+esac
+
 have() {
   command -v "$1" >/dev/null 2>&1
 }
+
+if [[ "$OS" == "Darwin" ]]; then
+  echo ""
+  if have brew; then
+    echo "(xapids suggestion) Install everything through homebrew. simplifies management and update processes"
+  else
+    echo "(xapids suggestion) Install Homebrew first, install everything through homebrew. simplifies management and update processes"
+  fi
+  echo "https://brew.sh/"
+fi
 
 print_header() {
   echo ""
@@ -47,18 +65,28 @@ hint() {
   esac
 }
 
-missing_core=0
+missing_required=0
 
-print_header "Core CLIs"
+print_header "Required"
 
 if have git; then
   print_ok "git"
 else
   print_missing "git"
-  hint "Install Xcode Command Line Tools (includes git): xcode-select --install" \
-       "Install via your distro package manager (e.g. apt/yum/pacman)" \
-       "Install git: https://git-scm.com/downloads"
-  missing_core=$((missing_core + 1))
+  hint "xcode-select --install" \
+       "sudo apt-get update && sudo apt-get install -y git" \
+       "https://git-scm.com/downloads"
+  missing_required=$((missing_required + 1))
+fi
+
+if have gh; then
+  print_ok "gh"
+else
+  print_missing "gh"
+  hint "brew install gh" \
+       "sudo apt-get update && sudo apt-get install -y gh" \
+       "https://cli.github.com/"
+  missing_required=$((missing_required + 1))
 fi
 
 if have python3; then
@@ -66,51 +94,34 @@ if have python3; then
 else
   print_missing "python3"
   hint "brew install python" \
-       "sudo apt-get update && sudo apt-get install -y python3" \
-       "Install Python: https://www.python.org/downloads/"
-  missing_core=$((missing_core + 1))
+       "sudo apt-get update && sudo apt-get install -y python3 python3-pip" \
+       "https://www.python.org/downloads/"
+  missing_required=$((missing_required + 1))
 fi
 
-if have jq; then
-  print_ok "jq"
+if python3 -m pip --version >/dev/null 2>&1; then
+  print_ok "pip (python3 -m pip)"
 else
-  print_missing "jq"
-  hint "brew install jq" \
-       "sudo apt-get update && sudo apt-get install -y jq" \
-       "Install jq: https://jqlang.github.io/jq/download/"
-  missing_core=$((missing_core + 1))
+  print_missing "pip (python3 -m pip)"
+  hint "python3 -m ensurepip --upgrade" \
+       "sudo apt-get update && sudo apt-get install -y python3-pip" \
+       "https://pip.pypa.io/en/stable/installation/"
+  missing_required=$((missing_required + 1))
 fi
 
-if have node; then
-  print_ok "node"
+if python3 -c 'import yaml' >/dev/null 2>&1; then
+  print_ok "pyyaml"
 else
-  print_missing "node"
-  hint "brew install node" \
-       "sudo apt-get update && sudo apt-get install -y nodejs npm" \
-       "Install Node.js: https://nodejs.org/en/download"
-  missing_core=$((missing_core + 1))
+  print_missing "pyyaml"
+  hint "python3 -m pip install --upgrade pyyaml" \
+       "python3 -m pip install --upgrade pyyaml" \
+       "https://pypi.org/project/PyYAML/"
+  missing_required=$((missing_required + 1))
 fi
 
-if have npx; then
-  print_ok "npx"
-else
-  print_missing "npx (usually comes with npm/node)"
-  hint "brew install node" \
-       "sudo apt-get update && sudo apt-get install -y nodejs npm" \
-       "Install Node.js (includes npm/npx): https://nodejs.org/en/download"
-  missing_core=$((missing_core + 1))
-fi
+print_header "Optional"
 
-print_header "Optional CLIs"
-
-if have gh; then
-  print_ok "gh (GitHub CLI)"
-else
-  print_missing "gh (GitHub CLI)"
-  hint "brew install gh" \
-       "sudo apt-get update && sudo apt-get install -y gh" \
-       "Install gh: https://cli.github.com/"
-fi
+echo "Optional apps are listed in the catalogue under library/shared/extras/."
 
 if have rg; then
   print_ok "rg (ripgrep)"
@@ -185,10 +196,10 @@ else
 fi
 
 echo ""
-if [[ $missing_core -eq 0 ]]; then
-  echo "Doctor result: OK (core CLIs present)"
+if [[ $missing_required -eq 0 ]]; then
+  echo "Check result: OK (required present)"
 else
-  echo "Doctor result: missing $missing_core core CLI(s)"
+  echo "Check result: missing $missing_required required item(s)"
   if [[ $STRICT -eq 1 ]]; then
     exit 1
   fi

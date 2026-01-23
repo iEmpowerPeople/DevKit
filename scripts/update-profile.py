@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 def find_tools_in_library(repo_root):
     """Scan library and return all tools organized by category"""
-    categories = ["agents", "skills", "commands", "mcp", "cli"]
+    categories = ["agents", "skills", "commands", "mcp", "extras"]
     scopes = ["shared", "xapids", "tihany7"]
     
     tools = {cat: [] for cat in categories}
@@ -80,6 +80,19 @@ def find_tools_in_library(repo_root):
                             'author': scope,
                             'file': str(file_path.relative_to(repo_root))
                         })
+
+    # Match README catalogue grouping for extras: -cli, then -gui, then other.
+    def _extras_sort_key(tool):
+        tool_id = tool.get('id', '')
+        if tool_id.endswith('-cli'):
+            group = 0
+        elif tool_id.endswith('-gui'):
+            group = 1
+        else:
+            group = 2
+        return (group, tool_id, tool.get('author', ''))
+
+    tools['extras'] = sorted(tools.get('extras', []), key=_extras_sort_key)
     
     return tools
 
@@ -93,7 +106,7 @@ def load_profile(profile_path):
     
     # Build map of tool_id -> enabled state for each category
     enabled_states = {}
-    for category in ["agents", "skills", "commands", "mcp", "cli"]:
+    for category in ["agents", "skills", "commands", "mcp", "extras"]:
         enabled_states[category] = {}
         if category in profile and isinstance(profile[category], list):
             for tool in profile[category]:
@@ -106,14 +119,14 @@ def write_profile(profile_path, profile_name, library_tools, existing_enabled):
     """Write updated profile preserving enabled states"""
     
     lines = []
-    lines.append(f"# {profile_name}'s DevKit-Claude Profile")
+    lines.append(f"# {profile_name}'s DevKit Profile")
     lines.append("# Personal tool selections from the library")
     lines.append("# Browse README.md to see all available tools")
     lines.append("# Set enabled: true to sync a tool, enabled: false to skip it")
     lines.append("# author: indicates who maintains the tool (shared, xapids, tihany7)")
     lines.append("")
     
-    for category in ["agents", "skills", "commands", "mcp", "cli"]:
+    for category in ["agents", "skills", "commands", "mcp", "extras"]:
         lines.append(f"# {category.capitalize()}")
         lines.append(f"{category}:")
         

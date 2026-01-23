@@ -19,6 +19,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Literal, Optional, Tuple, cast
+import platform
+import re
 
 Category = Literal["agents", "commands", "skills"]
 Target = Literal["claude", "opencode"]
@@ -130,6 +132,194 @@ def parse_entries(profile: Dict[str, Any]) -> list[Entry]:
             author_str = cast(str, author)
             enabled_bool = cast(bool, enabled)
             out.append(Entry(category=cast(Category, category), id=tool_id_str, author=author_str, enabled=enabled_bool))
+    return out
+
+
+def parse_extras(profile: Dict[str, Any]) -> list[Dict[str, Any]]:
+    items = profile.get("extras", [])
+    if items is None:
+        items = []
+    if not isinstance(items, list):
+        prompt_and_abort("Invalid profile", "Expected list for 'extras'")
+    out: list[Dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            prompt_and_abort("Invalid profile", "Expected mapping items under 'extras'")
+        tool_id = item.get("id")
+        enabled = item.get("enabled")
+        if not isinstance(tool_id, str) or not tool_id:
+            prompt_and_abort("Invalid profile", "Missing/invalid id under 'extras'")
+        if not isinstance(enabled, bool):
+            prompt_and_abort("Invalid profile", f"Missing/invalid enabled for extras:{tool_id}")
+        out.append({"id": tool_id, "enabled": enabled})
+    return out
+
+
+def _which(cmd: str) -> Optional[str]:
+    import shutil as _shutil
+
+    return _shutil.which(cmd)
+
+
+def _parse_semver(text: str) -> Optional[Tuple[int, int, int]]:
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", text)
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+
+def _semver_ge(have: Tuple[int, int, int], want: Tuple[int, int, int]) -> bool:
+    return have >= want
+
+
+def _cmd_output(argv: list[str]) -> str:
+    import subprocess
+
+    p = subprocess.run(argv, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return (p.stdout or "").strip()
+
+
+def extras_install_hints(extra_ids: list[str]) -> list[str]:
+    # Prints actions; does not install.
+    sysname = platform.system()
+    have_brew = _which("brew") is not None
+    out: list[str] = []
+
+    def add_block(title: str, lines: list[str]) -> None:
+        out.append(f"extras: {title}")
+        out.extend([f"  {ln}" for ln in lines])
+
+    want_git = (2, 30, 0)
+
+    if sysname == "Darwin" and not have_brew:
+        add_block(
+            "(xapids suggestion) homebrew",
+            [
+                "Install Homebrew first, install everything through homebrew. simplifies management and update processes",
+                "https://brew.sh/",
+            ],
+        )
+
+    for tool_id in extra_ids:
+        if tool_id == "git-cli":
+            path = _which("git")
+            if not path:
+                if sysname == "Darwin":
+                    if have_brew:
+                        add_block("git-cli", ["missing", "1) brew install git", "2) if blocked: xcode-select --install", "3) https://git-scm.com/downloads"])
+                    else:
+                        add_block(
+                            "git-cli",
+                            [
+                                "missing",
+                                "1) (xapids suggestion) install Homebrew: https://brew.sh/",
+                                "2) brew install git",
+                                "3) if blocked: xcode-select --install",
+                                "4) https://git-scm.com/downloads",
+                            ],
+                        )
+                elif sysname == "Windows":
+                    add_block("git-cli", ["missing", "1) winget install -e --id Git.Git", "2) https://git-scm.com/downloads"])
+                elif sysname == "Linux":
+                    add_block("git-cli", ["missing"])
+                else:
+                    add_block("git-cli", ["missing"])
+                continue
+
+            have = _parse_semver(_cmd_output(["git", "--version"]))
+            if have and not _semver_ge(have, want_git):
+                if sysname == "Darwin":
+                    if have_brew:
+                        add_block("git-cli", [f"outdated ({have[0]}.{have[1]}.{have[2]})", "1) brew upgrade git", "2) https://git-scm.com/downloads"])
+                    else:
+                        add_block(
+                            "git-cli",
+                            [
+                                f"outdated ({have[0]}.{have[1]}.{have[2]})",
+                                "1) (xapids suggestion) install Homebrew: https://brew.sh/",
+                                "2) brew upgrade git",
+                                "3) https://git-scm.com/downloads",
+                            ],
+                        )
+                elif sysname == "Windows":
+                    add_block("git-cli", [f"outdated ({have[0]}.{have[1]}.{have[2]})", "1) winget upgrade --id Git.Git", "2) https://git-scm.com/downloads"])
+                else:
+                    add_block("git-cli", [f"outdated ({have[0]}.{have[1]}.{have[2]})"])
+            else:
+                add_block("git-cli", ["ok"])
+
+        elif tool_id == "github-cli":
+            if not _which("gh"):
+                if sysname == "Darwin":
+                    if have_brew:
+                        add_block("github-cli", ["missing", "1) brew install gh", "2) https://cli.github.com/"])
+                    else:
+                        add_block(
+                            "github-cli",
+                            [
+                                "missing",
+                                "1) (xapids suggestion) install Homebrew: https://brew.sh/",
+                                "2) brew install gh",
+                                "3) https://cli.github.com/",
+                            ],
+                        )
+                elif sysname == "Windows":
+                    add_block("github-cli", ["missing", "1) winget install -e --id GitHub.cli", "2) https://cli.github.com/"])
+                elif sysname == "Linux":
+                    add_block("github-cli", ["missing"])
+                else:
+                    add_block("github-cli", ["missing"])
+            else:
+                add_block("github-cli", ["ok"])
+
+        elif tool_id == "claude-code-cli":
+            if not _which("claude"):
+                if sysname == "Darwin":
+                    if have_brew:
+                        add_block("claude-code-cli", ["missing", "1) brew install --cask <claude> (if published)", "2) https://code.claude.com/"])
+                    else:
+                        add_block("claude-code-cli", ["missing", "1) https://code.claude.com/"])
+                elif sysname == "Linux":
+                    add_block("claude-code-cli", ["missing"])
+                else:
+                    add_block("claude-code-cli", ["missing", "https://code.claude.com/"])
+            else:
+                add_block("claude-code-cli", ["ok"])
+
+        elif tool_id == "opencode-cli":
+            if not _which("opencode"):
+                if sysname == "Darwin":
+                    if have_brew:
+                        add_block("opencode-cli", ["missing", "1) brew install opencode (if published)", "2) https://opencode.ai/"])
+                    else:
+                        add_block("opencode-cli", ["missing", "1) https://opencode.ai/"])
+                elif sysname == "Linux":
+                    add_block("opencode-cli", ["missing"])
+                else:
+                    add_block("opencode-cli", ["missing", "https://opencode.ai/"])
+            else:
+                add_block("opencode-cli", ["ok"])
+
+        elif tool_id == "opencode-gui":
+            # Cross-platform detection is unreliable; only report install location.
+            if sysname == "Darwin" and have_brew:
+                add_block("opencode-gui", ["manual", "1) brew install --cask opencode (if published)", "2) https://opencode.ai/"])
+            elif sysname == "Linux":
+                add_block("opencode-gui", ["manual"])
+            else:
+                add_block("opencode-gui", ["manual", "https://opencode.ai/"])
+
+        elif tool_id == "codelayer-gui":
+            if sysname == "Darwin" and have_brew:
+                add_block("codelayer-gui", ["manual", "1) brew install --cask codelayer (if published)", "2) provider instructions"])
+            elif sysname == "Linux":
+                add_block("codelayer-gui", ["manual"])
+            else:
+                add_block("codelayer-gui", ["manual", "provider instructions"])
+
+        else:
+            add_block(tool_id, ["unknown", "1) see library/shared/extras/"])
+
     return out
 
 
@@ -250,6 +440,8 @@ def main(argv: list[str]) -> int:
 
     profile = load_yaml(profile_path)
     entries = parse_entries(profile)
+    extras = parse_extras(profile)
+    enabled_extras = [e["id"] for e in extras if e.get("enabled") is True]
 
     dup = detect_duplicates(entries)
     if dup is not None:
@@ -341,6 +533,13 @@ def main(argv: list[str]) -> int:
     if not args.dry_run:
         save_state(state_path, state)
         say(f"State updated: {state_path}")
+
+    if enabled_extras:
+        say("")
+        say("Enabled extras")
+        say("----------------------------------------")
+        for line in extras_install_hints(enabled_extras):
+            say(line)
 
     return 0
 

@@ -1,5 +1,4 @@
-# tihany7's DevKit-Claude Profile
-# Personal tool selections from the library
+# tihany7's DevKit Profile
 # Browse README.md to see all available tools
 # Set enabled: true to sync a tool, enabled: false to skip it
 # author: indicates who maintains the tool (shared, xapids, tihany7)
@@ -76,9 +75,13 @@ mcp:
     enabled: false
 
 
-# Cli
-cli:
+# Extras
+extras:
   - id: claude-code-cli
+    author: shared
+    enabled: false
+
+  - id: codelayer-gui
     author: shared
     enabled: false
 
@@ -91,6 +94,10 @@ cli:
     enabled: false
 
   - id: opencode-cli
+    author: shared
+    enabled: false
+
+  - id: opencode-gui
     author: shared
     enabled: false
 

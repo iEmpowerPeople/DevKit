@@ -1,0 +1,132 @@
+# DevKit Schema - Single Source of Truth
+# All scripts read from this file. Changes here propagate everywhere via `make generate`.
+
+authors:
+  - id: shared
+    description: Community-maintained tools
+  - id: xapids
+    description: xapids personal tools
+  - id: tihany7
+    description: tihany7 personal tools
+
+categories:
+  agents:
+    file_pattern: "{author}/agents/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+    optional_fields:
+      - requires_extras
+      - requires_scripts
+    example: shared-example-agent
+
+  commands:
+    file_pattern: "{author}/.commands/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+    optional_fields:
+      - requires_extras
+      - requires_scripts
+    example: shared-example-command
+
+  skills:
+    file_pattern: "{author}/skills/{id}/SKILL.md"
+    requires_frontmatter: true
+    required_fields:
+      - name
+      - description
+      - disable-model-invocation
+      - user-invocable
+    required_subfolders:
+      - reference
+      - scripts
+      - assets
+      - templates
+    optional_fields:
+      - allowed-tools
+      - argument-hint
+      - context
+      - agent
+      - model
+    example: shared-example-skill
+    notes: |
+      Skills support both Claude Code and OpenCode.
+      - `name` must match the folder name (lowercase, hyphens allowed)
+      - `description` explains what the skill does
+      - `disable-model-invocation: true` prevents AI from auto-invoking (user must type /skill-name)
+      - `user-invocable: true` allows user to invoke via /skill-name
+      - All four fields are REQUIRED for cross-CLI compatibility
+
+  skills-user-only:
+    file_pattern: "{author}/skills-user-only/{id}/SKILL.md"
+    requires_frontmatter: true
+    required_fields:
+      - name
+      - description
+      - disable-model-invocation
+      - user-invocable
+    required_subfolders:
+      - reference
+      - scripts
+      - assets
+      - templates
+    required_values:
+      user-invocable: true
+    optional_fields:
+      - allowed-tools
+      - argument-hint
+      - context
+      - agent
+      - model
+
+  mcp:
+    file_pattern: "{author}/mcp/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+    optional_fields: []
+    example: shared-example-mcp
+
+  extras:
+    file_pattern: "{author}/extras/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+    required_sections:
+      - "## Why you might want it"
+      - "## Install"
+    example: shared-example-extra-cli
+
+  scripts:
+    file_patterns:
+      - "{author}/scripts/{id}.py"
+      - "{author}/scripts/{id}.sh"
+    requires_frontmatter: false
+    example: shared-example-script
+
+  claude-code-hooks:
+    file_pattern: "{author}/claude-code-hooks/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+      - hook_type
+    optional_fields:
+      - requires_extras
+      - requires_scripts
+    example: shared-example-claude-code-hook
+
+  opencode-plugins:
+    file_pattern: "{author}/opencode-plugins/{id}.md"
+    requires_frontmatter: true
+    required_fields:
+      - description
+    optional_fields:
+      - requires_extras
+      - requires_scripts
+    example: shared-example-opencode-plugin
+
+validation:
+  requires_extras_must_exist: true
+  requires_scripts_must_exist: true
+  scripts_must_be_executable: true

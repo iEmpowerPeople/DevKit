@@ -1,3 +1,7 @@
+---
+description: Up-to-date, version-specific library/API documentation and code examples
+---
+
 # Context7 MCP
 
 Context7 provides up-to-date, version-specific library/API documentation and code examples.

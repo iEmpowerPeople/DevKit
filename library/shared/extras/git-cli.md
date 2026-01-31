@@ -1,3 +1,7 @@
+---
+description: Version control CLI for commits, branches, and collaboration
+---
+
 # Git CLI
 
 `git` is the version control CLI used to clone this repo, commit changes, and collaborate via branches/PRs.

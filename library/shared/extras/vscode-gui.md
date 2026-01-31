@@ -1,3 +1,7 @@
+---
+description: Free cross-platform code editor with extensions
+---
+
 # VS Code
 
 Visual Studio Code (VS Code) is a free, cross-platform code editor.

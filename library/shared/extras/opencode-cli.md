@@ -1,3 +1,7 @@
+---
+description: Terminal-based AI coding assistant
+---
+
 # Opencode CLI
 
 The `opencode` CLI is the entrypoint for using Opencode.

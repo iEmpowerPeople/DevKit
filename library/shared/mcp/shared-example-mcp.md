@@ -1,3 +1,7 @@
+---
+description: Example shared MCP demonstrating library structure
+---
+
 # Example Shared MCP Server
 
 This is an example MCP server configuration available to all users.

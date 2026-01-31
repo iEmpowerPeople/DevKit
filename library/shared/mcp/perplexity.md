@@ -1,3 +1,7 @@
+---
+description: Official MCP server for the Perplexity API Platform (web search + ask/reason/research)
+---
+
 # Perplexity MCP
 
 Official MCP server for the Perplexity API Platform (web search + ask/reason/research).

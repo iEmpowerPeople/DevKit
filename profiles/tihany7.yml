@@ -1,21 +1,34 @@
 # tihany7's DevKit Profile
-# Personal tool selections from the library
-# Browse README.md to see all available tools
+# AUTO-GENERATED from library/. Do not edit manually.
+# Run `make generate` to refresh after library changes.
 # Set enabled: true to sync a tool, enabled: false to skip it
-# author: indicates who maintains the tool (shared, xapids, tihany7)
 
 # Agents
 agents:
   - id: shared-example-agent
     author: shared
+    requires_scripts: "`shared-example-script.py`"
     enabled: false
 
-  - id: xapids-example-agent
+
+# Commands
+commands:
+  - id: shared-example-command
+    author: shared
+    requires_scripts: "`shared-example-script.py`"
+    enabled: false
+
+  - id: file-editing
     author: xapids
     enabled: false
 
-  - id: tihany7-example-agent
-    author: tihany7
+  - id: gitgh-us-merge
+    author: xapids
+    requires_extras: "`git-cli`, `github-cli`"
+    enabled: false
+
+  - id: incise
+    author: xapids
     enabled: false
 
 
@@ -25,41 +38,13 @@ skills:
     author: shared
     enabled: false
 
-  - id: xapids-example-skill
+  - id: proxy
     author: xapids
     enabled: false
 
-  - id: tihany7-example-skill
-    author: tihany7
-    enabled: false
 
-
-# Commands
-commands:
-  - id: shared-example-command
-    author: shared
-    enabled: false
-
-  - id: file-editing
-    author: xapids
-    enabled: false
-
-  - id: gitgh-us-merge
-    author: xapids
-    enabled: false
-
-  - id: incise
-    author: xapids
-    enabled: false
-
-  - id: xapids-example-command
-    author: xapids
-    enabled: false
-
-  - id: tihany7-example-command
-    author: tihany7
-    enabled: false
-
+# Skills-user-only
+skills-user-only:
 
 # Mcp
 mcp:
@@ -94,6 +79,10 @@ extras:
     author: shared
     enabled: false
 
+  - id: shared-example-extra-cli
+    author: shared
+    enabled: false
+
 
   - id: codelayer-gui
     author: shared
@@ -104,6 +93,20 @@ extras:
     enabled: false
 
   - id: vscode-gui
+    author: shared
+    enabled: false
+
+
+# Claude-code-hooks
+claude-code-hooks:
+  - id: shared-example-claude-code-hook
+    author: shared
+    enabled: false
+
+
+# Opencode-plugins
+opencode-plugins:
+  - id: shared-example-opencode-plugin
     author: shared
     enabled: false
 

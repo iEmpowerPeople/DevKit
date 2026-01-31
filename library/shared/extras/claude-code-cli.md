@@ -1,3 +1,7 @@
+---
+description: Anthropic's agentic coding assistant CLI
+---
+
 # Claude Code CLI
 
 The `claude` CLI is the entrypoint for Claude Code.

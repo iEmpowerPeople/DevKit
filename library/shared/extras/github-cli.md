@@ -1,3 +1,7 @@
+---
+description: GitHub CLI for PRs, issues, and CI status
+---
+
 # GitHub CLI
 
 `gh` is the GitHub CLI.
